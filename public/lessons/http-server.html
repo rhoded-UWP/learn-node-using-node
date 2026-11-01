@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>The HTTP server | Learn Node on Node</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="inner">
+      <a class="site-title" href="/">Learn Node on Node</a>
+      <nav class="site-nav" aria-label="Site">
+        <ul>
+          <li><a href="/">Lessons</a></li>
+          <li><a href="/lessons/server-status">Server status</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <span class="pill">Lesson 1</span>
+    <h1>The HTTP server</h1>
+    <p class="lead">How a Node.js server receives a request and answers it
+    with a status code, a Content-Type, and a body.</p>
+
+    <section class="card" aria-labelledby="idea-heading">
+      <h2 id="idea-heading">The idea</h2>
+      <p>In the browser, your JavaScript waits for clicks. On a server, Node.js
+      waits for <strong>requests</strong>. The built-in <code>node:http</code>
+      module gives you <code>http.createServer()</code>. You hand it a function,
+      and Node calls that function once for every request that arrives.</p>
+      <p>Your function gets two objects. <code>request</code> is what the
+      browser asked for: a <strong>method</strong> such as GET, a
+      <strong>path</strong> such as <code>/demo/echo</code>, an optional
+      <strong>query string</strong> after a <code>?</code>, and
+      <strong>headers</strong>, which are small labeled notes about the
+      browser. <code>response</code> is how you answer.</p>
+      <p>Every answer has three parts. The <strong>status code</strong> says
+      how it went: 200 means OK, and 404 means not found. The
+      <strong>Content-Type</strong> header says what kind of data is coming,
+      such as HTML or JSON. The <strong>body</strong> is the data itself.
+      <code>response.writeHead()</code> sends the first two, and
+      <code>response.end()</code> sends the body and finishes the answer.</p>
+    </section>
+
+    <section class="card" aria-labelledby="code-heading">
+      <h2 id="code-heading">The code</h2>
+      <p>This is the code that answers the demo below, copied from this site's
+      own source. First, <code>server.js</code> creates the server and starts
+      listening on a port.</p>
+      <span class="code-file">server.js</span>
+      <pre><code>const server = http.createServer((request, response) =&gt; {
+  // If anything inside handleRequest throws, answer with a 500 instead of
+  // crashing. The details go to the terminal, never to the browser.
+  handleRequest(request, response).catch((error) =&gt; {
+    console.error(error);
+    if (!response.headersSent) {
+      sendJson(response, 500, { error: 'Something went wrong on the server.' });
+    } else {
+      response.end();
+    }
+  });
+});
+
+server.listen(PORT, () =&gt; {
+  console.log(`Server running at http://localhost:${PORT}`);
+});</code></pre>
+      <p>Inside <code>handleRequest</code>, <code>new URL()</code> splits the
+      request's URL into a path and query parameters. A path that starts with
+      <code>/demo/</code> is looked up in <code>DEMOS</code>. If no demo
+      matches, the answer is a 404.</p>
+      <span class="code-file">server.js</span>
+      <pre><code>// Each demo path and the function in demos.js that answers it.
+const DEMOS = {
+  '/demo/echo': echo,
+};</code></pre>
+      <pre><code>  const url = new URL(request.url, 'http://localhost');
+
+  if (url.pathname.startsWith('/demo/')) {
+    const demo = DEMOS[url.pathname];
+    if (!demo) return sendJson(response, 404, { error: 'Not found' });
+    return demo(request, response, url);
+  }</code></pre>
+      <p>Finally, <code>echo</code> in <code>demos.js</code> builds the answer,
+      and <code>sendJson</code> sets the status code and Content-Type and sends
+      the body.</p>
+      <span class="code-file">demos.js</span>
+      <pre><code>// Every JSON answer goes through here, so the status code and Content-Type
+// are always set the same way.
+export function sendJson(response, status, data) {
+  response.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8' });
+  response.end(JSON.stringify(data));
+}
+
+// The only request headers echo repeats back. Others, like cookies, stay private.
+const SAFE_HEADERS = ['user-agent', 'accept', 'accept-language'];
+
+// GET /demo/echo: answers with what the browser sent in its request.
+export function echo(request, response, url) {
+  const headers = {};
+  for (const name of SAFE_HEADERS) {
+    if (request.headers[name]) headers[name] = request.headers[name];
+  }
+  sendJson(response, 200, {
+    method: request.method,
+    path: url.pathname,
+    query: Object.fromEntries(url.searchParams),
+    headers,
+  });
+}</code></pre>
+    </section>
+
+    <section class="card" aria-labelledby="try-heading">
+      <h2 id="try-heading">Try it live</h2>
+      <p>Run the first demo, then the second. Before you click the second one,
+      guess how its <code>query</code> will differ from the first.</p>
+      <div class="demo">
+        <p class="demo-endpoint">GET /demo/echo</p>
+        <button type="button" data-demo="/demo/echo">Run the demo</button>
+        <pre class="demo-output" aria-live="polite"></pre>
+      </div>
+      <div class="demo">
+        <p class="demo-endpoint">GET /demo/echo?name=Ada&amp;lesson=1</p>
+        <button type="button" data-demo="/demo/echo?name=Ada&amp;lesson=1">Run the demo with a query string</button>
+        <pre class="demo-output" aria-live="polite"></pre>
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="happened-heading">
+      <h2 id="happened-heading">What just happened</h2>
+      <p>Your browser sent a request, and the server sent back a description
+      of that request as JSON.</p>
+      <ul>
+        <li><strong>HTTP 200 OK</strong> is the status code that
+        <code>echo</code> passed to <code>sendJson</code>.</li>
+        <li><code>"method": "GET"</code>: the button asked with GET, the
+        method a browser uses to fetch something.</li>
+        <li><code>"path": "/demo/echo"</code> is the same for both buttons.
+        The path is the part of the URL before the <code>?</code>.</li>
+        <li><code>"query"</code> is empty (<code>{}</code>) the first time. The
+        second time it is <code>{ "name": "Ada", "lesson": "1" }</code>. The
+        <code>1</code> arrives in quotes because everything in a URL is text.
+        Your code has to turn it into a number if it needs one.</li>
+        <li><code>"headers"</code> holds just three entries.
+        <code>user-agent</code> names your browser, <code>accept</code> is
+        <code>*/*</code> (the button will take any kind of answer), and
+        <code>accept-language</code> lists your browser's languages. Your
+        browser sends other headers too, but <code>echo</code> copies only the
+        names in <code>SAFE_HEADERS</code>. Node gives header names in
+        lowercase, which is why the code looks up <code>'user-agent'</code>.</li>
+      </ul>
+      <p>You did not see one part of the answer: the
+      <code>Content-Type: application/json; charset=utf-8</code> header that
+      <code>sendJson</code> set. To see it, open your browser's developer
+      tools, go to the Network tab, run the demo again, and click the
+      <code>echo</code> request.</p>
+    </section>
+
+    <p><a href="/">Back to the lessons</a></p>
+  </main>
+
+  <footer class="site-footer">
+    <div class="inner">
+      <p>Built by Dan for APC 440.</p>
+      <p>Served by <code>server.js</code>, a Node.js server with no npm packages.</p>
+    </div>
+  </footer>
+
+  <script src="/js/try-it.js"></script>
+</body>
+</html>
