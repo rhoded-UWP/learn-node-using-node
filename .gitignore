@@ -1,0 +1,18 @@
+# Dependencies (this project has none yet, but Module 12 adds Express)
+node_modules
+
+# Logs
+logs
+*.log
+npm-debug.log*
+
+# Secrets: never commit these
+.env
+.env.*
+
+# Editor and OS files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+Thumbs.db

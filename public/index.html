@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Learn Node on Node</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="inner">
+      <a class="site-title" href="/">Learn Node on Node</a>
+      <nav class="site-nav" aria-label="Site">
+        <ul>
+          <li><a href="/">Lessons</a></li>
+          <li><a href="/lessons/server-status">Server status</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <span class="pill">A tutorial that runs on itself</span>
+    <h1>Learn Node on Node</h1>
+    <p class="lead">This site teaches Node.js, and it is built with Node.js.
+    Every page you read here was sent to you by the server it describes, and
+    every lesson has a live demo running on that same server.</p>
+
+    <section class="card" aria-labelledby="how-heading">
+      <h2 id="how-heading">How this site works</h2>
+      <p>When you open a page, your browser sends a request to a small Node.js
+      program called <code>server.js</code>. The server looks at the path you
+      asked for, finds the matching file in its <code>public</code> folder, and
+      sends it back. When you click <strong>Run the demo</strong> on a lesson,
+      the server runs real code and answers with JSON.</p>
+      <p>The site uses no npm packages. Everything comes from modules that
+      ship with Node.js itself.</p>
+    </section>
+
+    <section aria-labelledby="lessons-heading">
+      <h2 id="lessons-heading">Lessons</h2>
+      <ol class="lesson-list">
+        <li>
+          <a href="/lessons/http-server">1. The HTTP server</a>
+          <p>Requests, responses, status codes, and Content-Type.</p>
+        </li>
+        <li>
+          <a href="/lessons/modules-and-npm">2. Modules and npm</a>
+          <p>package.json, <code>import</code>, scripts, and why this site has zero dependencies.</p>
+        </li>
+        <li>
+          <a href="/lessons/event-loop">3. The event loop</a>
+          <p>Why Node runs your code in an order you might not expect.</p>
+        </li>
+        <li>
+          <a href="/lessons/async-await">4. Promises and async/await</a>
+          <p>Waiting one after another versus waiting at the same time.</p>
+        </li>
+        <li>
+          <a href="/lessons/errors">5. Errors in async code</a>
+          <p>How a server handles a failure and keeps running.</p>
+        </li>
+        <li>
+          <a href="/lessons/server-status">6. Server status</a>
+          <p>What the server knows about itself, and what it forgets.</p>
+        </li>
+      </ol>
+      <p class="note">A lesson you have not built yet shows this site's
+      404 page. That is your error handling doing its job.</p>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="inner">
+      <p>Built by YOUR NAME for APC 440.</p>
+      <p>Served by <code>server.js</code>, a Node.js server with no npm packages.</p>
+    </div>
+  </footer>
+</body>
+</html>

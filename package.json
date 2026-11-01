@@ -1,0 +1,16 @@
+{
+  "name": "learn-node-on-node",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A Node.js tutorial site served by the Node.js code it teaches. APC 440, Module 11.",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "license": "UNLICENSED"
+}

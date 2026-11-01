@@ -1,0 +1,267 @@
+/* Learn Node on Node: site styles (APC 440, Module 11)
+   Plain CSS only (see CLAUDE.md). This file is finished: add new rules at
+   the bottom if a lesson truly needs one, and keep text contrast at 5:1 or
+   higher. */
+
+:root {
+  --bg: #f3f7f2;
+  --surface: #ffffff;
+  --ink: #16211a;
+  --ink-soft: #3f5045;
+  --brand: #1f5f2a;
+  --brand-ink: #ffffff;
+  --brand-soft: #e2efdf;
+  --stripe: #8cc84b;
+  --border: #cfdccc;
+  --code-bg: #121c16;
+  --code-ink: #e4f1e6;
+  --code-accent: #b9e58f;
+  --note-bg: #fff4e5;
+  --note-ink: #6b3600;
+  --focus: #c2410c;
+  --radius: 14px;
+  --mono: ui-monospace, 'Cascadia Code', Consolas, 'Courier New', monospace;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  line-height: 1.6;
+  color: var(--ink);
+  background: var(--bg);
+}
+
+* { box-sizing: border-box; }
+
+body { margin: 0; }
+
+:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+}
+
+/* ---------- Header and navigation ---------- */
+
+.site-header {
+  background: var(--brand);
+  color: var(--brand-ink);
+  border-bottom: 6px solid var(--stripe);
+}
+
+.site-header .inner {
+  max-width: 48rem;
+  margin: 0 auto;
+  padding: 1rem 1.25rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1.5rem;
+}
+
+.site-title {
+  color: var(--brand-ink);
+  font-weight: 800;
+  font-size: 1.2rem;
+  text-decoration: none;
+  letter-spacing: 0.01em;
+}
+
+.site-title:hover { text-decoration: underline; }
+
+.site-nav ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+}
+
+.site-nav a {
+  color: var(--brand-ink);
+  font-weight: 600;
+}
+
+/* ---------- Page layout ---------- */
+
+main {
+  max-width: 48rem;
+  margin: 0 auto;
+  padding: 2rem 1.25rem 3rem;
+}
+
+h1, h2, h3 { line-height: 1.25; }
+
+h1 {
+  font-size: clamp(1.8rem, 5vw, 2.4rem);
+  margin: 0.25rem 0 0.75rem;
+}
+
+h2 {
+  font-size: 1.35rem;
+  margin: 0 0 0.75rem;
+}
+
+a { color: var(--brand); }
+
+.lead {
+  font-size: 1.125rem;
+  color: var(--ink-soft);
+  margin-top: 0;
+}
+
+.pill {
+  display: inline-block;
+  padding: 0.15rem 0.7rem;
+  border-radius: 999px;
+  background: var(--brand-soft);
+  color: var(--brand);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.25rem 1.5rem;
+  margin: 1.25rem 0;
+}
+
+.note {
+  background: var(--note-bg);
+  color: var(--note-ink);
+  border-radius: var(--radius);
+  padding: 0.9rem 1.2rem;
+  margin: 1.25rem 0;
+}
+
+/* ---------- Home page lesson list ---------- */
+
+.lesson-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.lesson-list li {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.9rem 1.2rem;
+}
+
+.lesson-list a {
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+
+.lesson-list p {
+  margin: 0.25rem 0 0;
+  color: var(--ink-soft);
+}
+
+/* ---------- Code ---------- */
+
+code {
+  font-family: var(--mono);
+  font-size: 0.92em;
+  background: var(--brand-soft);
+  color: var(--ink);
+  padding: 0.1em 0.35em;
+  border-radius: 5px;
+}
+
+pre {
+  background: var(--code-bg);
+  color: var(--code-ink);
+  border-radius: 10px;
+  padding: 1rem 1.15rem;
+  overflow-x: auto;
+  line-height: 1.5;
+  font-size: 0.9rem;
+}
+
+pre code {
+  background: none;
+  color: inherit;
+  padding: 0;
+  font-size: inherit;
+}
+
+.code-file {
+  display: block;
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+  margin-bottom: -0.4rem;
+}
+
+/* ---------- Try it live ---------- */
+
+.demo {
+  border: 2px solid var(--brand);
+  border-radius: var(--radius);
+  padding: 1rem 1.25rem;
+  margin: 1rem 0;
+  background: var(--surface);
+}
+
+.demo-endpoint {
+  font-family: var(--mono);
+  font-size: 0.9rem;
+  color: var(--ink-soft);
+  margin: 0 0 0.75rem;
+}
+
+button,
+.button {
+  font: inherit;
+  font-weight: 700;
+  background: var(--brand);
+  color: var(--brand-ink);
+  border: 0;
+  border-radius: 999px;
+  padding: 0.55rem 1.2rem;
+  cursor: pointer;
+}
+
+button:hover { background: #174a20; }
+
+button:disabled {
+  background: var(--ink-soft);
+  cursor: wait;
+}
+
+.demo-output {
+  background: var(--code-bg);
+  color: var(--code-ink);
+  margin: 0.75rem 0 0;
+  min-height: 3rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.demo-output .demo-status {
+  color: var(--code-accent);
+  font-weight: 700;
+}
+
+/* ---------- Footer ---------- */
+
+.site-footer {
+  border-top: 1px solid var(--border);
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+}
+
+.site-footer .inner {
+  max-width: 48rem;
+  margin: 0 auto;
+  padding: 1.25rem;
+}
+
+.site-footer p { margin: 0.25rem 0; }
+
+@media (max-width: 30rem) {
+  .card, .demo { padding: 1rem; }
+}
