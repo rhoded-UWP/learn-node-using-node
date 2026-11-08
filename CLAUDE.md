@@ -17,13 +17,16 @@ keep it short, and explain your choices in plain words.
 ## Stack
 - Node.js 24 or newer. ES modules only: `import`, never `require()`.
   package.json already has "type": "module".
-- Core modules only, imported with the `node:` prefix (node:http,
-  node:fs/promises, node:path, node:os, node:timers/promises).
-  No npm packages, no Express, no frameworks. Express arrives in Module 12.
-  If the student asks to install a package, remind them of this rule first.
+- Express 5 is this site's only npm package. Core modules still use the
+  `node:` prefix (node:path, node:fs/promises, node:os, node:timers/promises).
+  No other packages. If the student asks to install one, remind them of
+  this rule first.
 - Use `import.meta.dirname` for the project folder. ES modules have no
   __dirname.
-- server.js creates the server, routes requests, and serves static files.
+- server.js creates the Express app, serves public/ with express.static,
+  adds each demo with app.get, and ends with the 404 handlers and one
+  error-handling middleware. Route code uses req and res the Express way
+  (req.query, res.status, res.json).
 - demos.js holds the demo handlers. server.js imports them. Create demos.js
   the first time a demo is added.
 - Listen on `process.env.PORT`, falling back to 3000. Render sets PORT.
@@ -78,8 +81,9 @@ Use these exact paths. Later steps depend on them.
   since the server started, memory used in MB, and when the server started.
 
 ## Errors and status codes
-- One bad request must never crash the server. Wrap request handling so a
-  thrown error or rejected promise becomes a 500 JSON response.
+- One bad request must never crash the server. One error-handling
+  middleware, last in server.js, turns any error into a 500 JSON response.
+  Express 5 sends a rejected promise from an async route there on its own.
 - Unknown page paths: 404 with public/404.html. Unknown /demo/ paths: 404
   with JSON { "error": "Not found" }.
 - Bad input in a query string: 400 with JSON that says what was wrong.
@@ -89,10 +93,9 @@ Use these exact paths. Later steps depend on them.
   file system paths to the browser.
 
 ## Static file safety
-- Serve files only from public/. Build the file path with node:path, and if
-  the resolved path is not inside public/, respond 404 without reading it.
-- Content types: .html, .css, .js, .json, .svg, .png, .ico, .txt. Anything
-  else is application/octet-stream.
+- express.static serves files only from public/ and refuses any path that
+  leaves it. Never build page file paths by hand.
+- express.static sets Content-Type from the file extension.
 
 ## Accessibility
 - One h1 per page and logical heading order

@@ -12,5 +12,8 @@
   "engines": {
     "node": ">=24"
   },
-  "license": "UNLICENSED"
+  "license": "UNLICENSED",
+  "dependencies": {
+    "express": "^5.3.0"
+  }
 }
