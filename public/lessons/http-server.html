@@ -29,85 +29,120 @@
     <section class="card" aria-labelledby="idea-heading">
       <h2 id="idea-heading">The idea</h2>
       <p>In the browser, your JavaScript waits for clicks. On a server, Node.js
-      waits for <strong>requests</strong>. The built-in <code>node:http</code>
-      module gives you <code>http.createServer()</code>. You hand it a function,
-      and Node calls that function once for every request that arrives.</p>
-      <p>Your function gets two objects. <code>request</code> is what the
-      browser asked for: a <strong>method</strong> such as GET, a
-      <strong>path</strong> such as <code>/demo/echo</code>, an optional
-      <strong>query string</strong> after a <code>?</code>, and
-      <strong>headers</strong>, which are small labeled notes about the
-      browser. <code>response</code> is how you answer.</p>
+      waits for <strong>requests</strong>. Node's built-in
+      <code>node:http</code> module can do this by itself, but this site uses
+      <strong>Express</strong>, an npm package built on top of
+      <code>node:http</code> that makes each route shorter to write.</p>
+      <p><code>express()</code> creates <code>app</code>.
+      <strong><code>app.listen(PORT)</code> creates the Node.js HTTP server for
+      us</strong> and starts it listening on that port. From then on, Node
+      hands every request that arrives to <code>app</code>, and
+      <code>app</code> passes it down the handlers in the order
+      <code>server.js</code> added them, until one of them answers.</p>
+      <p>Each handler gets two objects. <code>req</code> is what the browser
+      asked for: a <strong>method</strong> such as GET
+      (<code>req.method</code>), a <strong>path</strong> such as
+      <code>/demo/echo</code> (<code>req.path</code>), an optional
+      <strong>query string</strong> after a <code>?</code>, which Express turns
+      into an object (<code>req.query</code>), and <strong>headers</strong>,
+      which are small labeled notes about the browser (<code>req.get()</code>
+      reads one). <code>res</code> is how you answer.</p>
       <p>Every answer has three parts. The <strong>status code</strong> says
       how it went: 200 means OK, and 404 means not found. The
       <strong>Content-Type</strong> header says what kind of data is coming,
       such as HTML or JSON. The <strong>body</strong> is the data itself.
-      <code>response.writeHead()</code> sends the first two, and
-      <code>response.end()</code> sends the body and finishes the answer.</p>
+      <code>res.status()</code> sets the status code, and
+      <code>res.json()</code> sets the Content-Type to JSON, turns an object
+      into JSON text for the body, and sends the answer.</p>
     </section>
 
     <section class="card" aria-labelledby="code-heading">
       <h2 id="code-heading">The code</h2>
       <p>This is the code that answers the demo below, copied from this site's
-      own source. First, <code>server.js</code> creates the server and starts
-      listening on a port.</p>
+      own source. <code>server.js</code> creates <code>app</code>, serves the
+      pages in <code>PUBLIC_DIR</code>, adds the demo with
+      <code>app.get</code>, and ends with the 404 handlers and the error
+      handler. Express tries the handlers from top to bottom.</p>
       <span class="code-file">server.js</span>
-      <pre><code>const server = http.createServer((request, response) =&gt; {
-  // If anything inside handleRequest throws, answer with a 500 instead of
-  // crashing. The details go to the terminal, never to the browser.
-  handleRequest(request, response).catch((error) =&gt; {
-    console.error(error);
-    if (!response.headersSent) {
-      sendJson(response, 500, { error: 'Something went wrong on the server.' });
-    } else {
-      response.end();
-    }
-  });
+      <pre><code>// Learn Node on Node: the server (APC 440, Module 11)
+//
+// This file creates the Express app, serves the pages in public/, adds each
+// live demo, and ends with the 404 handlers and the error handler.
+// The demo handlers live in demos.js.
+
+import express from 'express';
+import path from 'node:path';
+import { echo } from './demos.js';
+
+// Render tells your server which port to use through the PORT environment
+// variable. On your own computer there is no PORT, so we fall back to 3000.
+const PORT = process.env.PORT || 3000;
+
+// The only folder the browser is allowed to read files from.
+const PUBLIC_DIR = path.join(import.meta.dirname, 'public');
+
+const app = express();
+
+// Log every request in the terminal.
+app.use((req, res, next) =&gt; {
+  console.log(req.method, req.url);
+  next();
 });
 
-server.listen(PORT, () =&gt; {
+// This site only answers GET. Every other method gets a 405.
+app.use((req, res, next) =&gt; {
+  if (req.method === 'GET') return next();
+  res.set('Allow', 'GET');
+  res.status(405).json({ error: 'Method not allowed. Use GET.' });
+});
+
+// Pages and files from public/. "/" is index.html, and a path with no
+// extension is an .html page (/lessons/errors -&gt; errors.html).
+// express.static sets Content-Type and refuses paths that leave public/.
+app.use(express.static(PUBLIC_DIR, { extensions: ['html'], redirect: false }));
+
+// Live demos. Each handler is in demos.js.
+app.get('/demo/echo', echo);
+
+// Unknown /demo/ paths get JSON. Any other unknown path gets the 404 page.
+app.use('/demo', (req, res) =&gt; {
+  res.status(404).json({ error: 'Not found' });
+});
+app.use((req, res) =&gt; {
+  res.status(404).sendFile('404.html', { root: PUBLIC_DIR });
+});
+
+// The error handler has four parameters, so Express sends every error here.
+// The details go to the terminal, never to the browser.
+app.use((error, req, res, next) =&gt; {
+  console.error(error);
+  if (res.headersSent) return next(error);
+  res.status(500).json({ error: 'Something went wrong on the server.' });
+});
+
+// app.listen creates the Node.js HTTP server for us and starts it.
+app.listen(PORT, (error) =&gt; {
+  if (error) throw error;
   console.log(`Server running at http://localhost:${PORT}`);
 });</code></pre>
-      <p>Inside <code>handleRequest</code>, <code>new URL()</code> splits the
-      request's URL into a path and query parameters. A path that starts with
-      <code>/demo/</code> is looked up in <code>DEMOS</code>. If no demo
-      matches, the answer is a 404.</p>
-      <span class="code-file">server.js</span>
-      <pre><code>// Each demo path and the function in demos.js that answers it.
-const DEMOS = {
-  '/demo/echo': echo,
-};</code></pre>
-      <pre><code>  const url = new URL(request.url, 'http://localhost');
-
-  if (url.pathname.startsWith('/demo/')) {
-    const demo = DEMOS[url.pathname];
-    if (!demo) return sendJson(response, 404, { error: 'Not found' });
-    return demo(request, response, url);
-  }</code></pre>
-      <p>Finally, <code>echo</code> in <code>demos.js</code> builds the answer,
-      and <code>sendJson</code> sets the status code and Content-Type and sends
-      the body.</p>
+      <p>A request for <code>/demo/echo</code> gets logged, passes the GET
+      check, finds no matching file in <code>public/</code>, and reaches
+      <code>app.get('/demo/echo', echo)</code>. Then <code>echo</code> in
+      <code>demos.js</code> builds the answer.</p>
       <span class="code-file">demos.js</span>
-      <pre><code>// Every JSON answer goes through here, so the status code and Content-Type
-// are always set the same way.
-export function sendJson(response, status, data) {
-  response.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8' });
-  response.end(JSON.stringify(data));
-}
-
-// The only request headers echo repeats back. Others, like cookies, stay private.
+      <pre><code>// The only request headers echo repeats back. Others, like cookies, stay private.
 const SAFE_HEADERS = ['user-agent', 'accept', 'accept-language'];
 
 // GET /demo/echo: answers with what the browser sent in its request.
-export function echo(request, response, url) {
+export function echo(req, res) {
   const headers = {};
   for (const name of SAFE_HEADERS) {
-    if (request.headers[name]) headers[name] = request.headers[name];
+    if (req.get(name)) headers[name] = req.get(name);
   }
-  sendJson(response, 200, {
-    method: request.method,
-    path: url.pathname,
-    query: Object.fromEntries(url.searchParams),
+  res.status(200).json({
+    method: req.method,
+    path: req.path,
+    query: req.query,
     headers,
   });
 }</code></pre>
@@ -135,26 +170,28 @@ export function echo(request, response, url) {
       of that request as JSON.</p>
       <ul>
         <li><strong>HTTP 200 OK</strong> is the status code that
-        <code>echo</code> passed to <code>sendJson</code>.</li>
+        <code>echo</code> passed to <code>res.status()</code>.</li>
         <li><code>"method": "GET"</code>: the button asked with GET, the
         method a browser uses to fetch something.</li>
         <li><code>"path": "/demo/echo"</code> is the same for both buttons.
-        The path is the part of the URL before the <code>?</code>.</li>
+        <code>req.path</code> is the part of the URL before the
+        <code>?</code>.</li>
         <li><code>"query"</code> is empty (<code>{}</code>) the first time. The
-        second time it is <code>{ "name": "Ada", "lesson": "1" }</code>. The
-        <code>1</code> arrives in quotes because everything in a URL is text.
-        Your code has to turn it into a number if it needs one.</li>
+        second time it is <code>{ "name": "Ada", "lesson": "1" }</code>, which
+        Express built from the query string. The <code>1</code> arrives in
+        quotes because everything in a URL is text. Your code has to turn it
+        into a number if it needs one.</li>
         <li><code>"headers"</code> holds just three entries.
         <code>user-agent</code> names your browser, <code>accept</code> is
         <code>*/*</code> (the button will take any kind of answer), and
         <code>accept-language</code> lists your browser's languages. Your
-        browser sends other headers too, but <code>echo</code> copies only the
-        names in <code>SAFE_HEADERS</code>. Node gives header names in
-        lowercase, which is why the code looks up <code>'user-agent'</code>.</li>
+        browser sends other headers too, but <code>echo</code> uses
+        <code>req.get()</code> to copy only the names in
+        <code>SAFE_HEADERS</code>.</li>
       </ul>
       <p>You did not see one part of the answer: the
       <code>Content-Type: application/json; charset=utf-8</code> header that
-      <code>sendJson</code> set. To see it, open your browser's developer
+      <code>res.json()</code> set. To see it, open your browser's developer
       tools, go to the Network tab, run the demo again, and click the
       <code>echo</code> request.</p>
     </section>
@@ -165,7 +202,7 @@ export function echo(request, response, url) {
   <footer class="site-footer">
     <div class="inner">
       <p>Built by Dan for APC 440.</p>
-      <p>Served by <code>server.js</code>, a Node.js server with no npm packages.</p>
+      <p>Served by <code>server.js</code>, a Node.js server built with Express.</p>
     </div>
   </footer>
 

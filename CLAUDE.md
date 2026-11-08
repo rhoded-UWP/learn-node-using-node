@@ -108,4 +108,3 @@ Use these exact paths. Later steps depend on them.
 - Start the server, request every route you added or changed (with curl or
   fetch), and check the status code and body. Then stop the server.
 - List which files changed and why.
-- Explain any new Node.js idea you used in one or two plain sentences.
