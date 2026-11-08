@@ -6,7 +6,7 @@
 
 import express from 'express';
 import path from 'node:path';
-import { echo } from './demos.js';
+import { echo, about } from './demos.js';
 
 // Render tells your server which port to use through the PORT environment
 // variable. On your own computer there is no PORT, so we fall back to 3000.
@@ -37,6 +37,7 @@ app.use(express.static(PUBLIC_DIR, { extensions: ['html'], redirect: false }));
 
 // Live demos. Each handler is in demos.js.
 app.get('/demo/echo', echo);
+app.get('/demo/about', about);
 
 // Unknown /demo/ paths get JSON. Any other unknown path gets the 404 page.
 app.use('/demo', (req, res) => {

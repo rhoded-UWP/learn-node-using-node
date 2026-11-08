@@ -4,8 +4,8 @@ This is the starting point for **Learn Node on Node**, a tutorial site about
 Node.js that is served by the Node.js code it teaches. In Lab 11 you build the
 server, the lesson pages, and the live demos, then deploy the site to Render.
 
-The site uses **no npm packages**. Everything comes from modules that ship
-with Node.js.
+The site uses **one npm package, Express**. Everything else comes from modules
+that ship with Node.js.
 
 ## What's in this repository
 
@@ -13,7 +13,7 @@ with Node.js.
 |---|---|
 | `CLAUDE.md` | Project instructions that Claude Code reads automatically. Do not delete it. |
 | `.node-version` | Tells Render which Node.js version to run. |
-| `package.json` / `package-lock.json` | Project name, scripts, and the Node.js version. No dependencies. |
+| `package.json` / `package-lock.json` | Project name, scripts, and the Node.js version. Express is the only dependency. |
 | `server.js` | The starter server. You grow it in Lab 11. |
 | `public/index.html` | The home page, with links to all six lessons. |
 | `public/404.html` | The page the server sends when a file is not found. |
@@ -44,8 +44,8 @@ with Node.js.
    node -v
    ```
 
-5. Check the install. There is nothing to download, but this confirms the
-   lockfile is valid, the same way Render will:
+5. Install Express, the only package, exactly as the lockfile lists it, the
+   same way Render will:
 
    ```
    npm ci
@@ -87,4 +87,4 @@ Every push to your main branch redeploys the site automatically.
 |---|---|
 | `npm run dev` | Runs the server locally and restarts it when you save |
 | `npm start` | Runs the server once, the way Render does |
-| `npm ci` | Installs exactly what package-lock.json lists (nothing yet) |
+| `npm ci` | Installs exactly what package-lock.json lists (just Express) |

@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Modules and npm | Learn Node on Node</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="inner">
+      <a class="site-title" href="/">Learn Node on Node</a>
+      <nav class="site-nav" aria-label="Site">
+        <ul>
+          <li><a href="/">Lessons</a></li>
+          <li><a href="/lessons/server-status">Server status</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <span class="pill">Lesson 2</span>
+    <h1>Modules and npm</h1>
+    <p class="lead">How a Node.js project splits its code into modules, loads
+    packages with <code>import</code>, and describes itself in
+    <code>package.json</code>.</p>
+
+    <section class="card" aria-labelledby="idea-heading">
+      <h2 id="idea-heading">The idea</h2>
+      <p>Each JavaScript file in a Node.js project is a
+      <strong>module</strong>. Its variables stay private unless it shares them
+      with <code>export</code>, and it loads what other modules share with
+      <code>import</code>. In this site, <code>demos.js</code> exports the
+      demo handlers, and <code>server.js</code> imports them.</p>
+      <p>The text after <code>from</code> says where the module comes from.
+      This project uses three kinds:</p>
+      <ul>
+        <li><code>'node:path'</code> and <code>'node:fs/promises'</code>: the
+        <code>node:</code> prefix means a <strong>core module</strong> that is
+        built into Node.js. There is nothing to install.</li>
+        <li><code>'express'</code>: a plain name means a
+        <strong>package</strong> that npm installed into the
+        <code>node_modules</code> folder.</li>
+        <li><code>'./demos.js'</code>: a name that starts with
+        <code>./</code> means <strong>a file in this project</strong>, found
+        next to the file that imports it. The <code>.js</code> is part of the
+        name.</li>
+      </ul>
+      <p><code>package.json</code> describes the project to Node.js and npm.
+      Its <code>dependencies</code> list the packages your code imports by
+      name. npm installs those, the packages they need, and the packages
+      <em>those</em> need. Express is this site's only dependency because
+      everything else it does, such as reading files and joining folder paths,
+      comes from Node's core modules.</p>
+    </section>
+
+    <section class="card" aria-labelledby="code-heading">
+      <h2 id="code-heading">The code</h2>
+      <p>This is the code behind the demo below, copied from this site's own
+      source. First, the whole <code>package.json</code>, from the project's
+      top folder:</p>
+      <span class="code-file">package.json</span>
+      <pre><code>{
+  "name": "learn-node-on-node",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A Node.js tutorial site served by the Node.js code it teaches. APC 440, Module 11.",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "engines": {
+    "node": "&gt;=24"
+  },
+  "license": "UNLICENSED",
+  "dependencies": {
+    "express": "^5.3.0"
+  }
+}</code></pre>
+      <p>Four of its fields matter for this lesson:</p>
+      <ul>
+        <li><strong><code>"type": "module"</code></strong> tells Node.js that
+        this project's <code>.js</code> files are ES modules, the kind that use
+        <code>import</code> and <code>export</code>.</li>
+        <li><strong><code>"scripts"</code></strong> gives commands short
+        names. <code>npm start</code> runs <code>node server.js</code>, which
+        is how Render starts the site. <code>npm run dev</code> runs
+        <code>node --watch server.js</code>, which restarts the server each
+        time you save a file.</li>
+        <li><strong><code>"engines"</code></strong> says which Node.js versions
+        the project is written for: <code>"&gt;=24"</code> means version 24 or
+        newer.</li>
+        <li><strong><code>"dependencies"</code></strong> lists the packages the
+        code imports by name. <code>"^5.3.0"</code> means Express 5.3.0 or any
+        newer 5.x version. <code>package-lock.json</code> records the exact
+        version of every package that was installed, so <code>npm ci</code>
+        installs the same set everywhere, including on Render.</li>
+      </ul>
+      <p><code>server.js</code> starts with three imports, one of each kind.
+      <code>express</code> and <code>path</code> have no curly braces: each one
+      takes the one main thing that module exports. <code>{ echo, about }</code>
+      has curly braces: it takes two exports by name, and the names must match
+      the <code>export function</code> lines in <code>demos.js</code>.</p>
+      <span class="code-file">server.js</span>
+      <pre><code>import express from 'express';
+import path from 'node:path';
+import { echo, about } from './demos.js';</code></pre>
+      <p>Further down, <code>server.js</code> connects the demo's path to the
+      <code>about</code> handler it imported.</p>
+      <span class="code-file">server.js</span>
+      <pre><code>// Live demos. Each handler is in demos.js.
+app.get('/demo/echo', echo);
+app.get('/demo/about', about);</code></pre>
+      <p><code>demos.js</code> imports two functions from a core module and
+      finds the project folder with <code>import.meta.dirname</code>. ES
+      modules have no <code>__dirname</code>, so this is how a module finds
+      the folder it is in.</p>
+      <span class="code-file">demos.js</span>
+      <pre><code>import { readFile, readdir } from 'node:fs/promises';
+import path from 'node:path';
+
+// The project folder. demos.js sits next to package.json and node_modules.
+const PROJECT_DIR = import.meta.dirname;</code></pre>
+      <p>Finally, <code>about</code> reads <code>package.json</code> as text,
+      turns it into an object with <code>JSON.parse</code>, and counts the
+      folders in <code>node_modules</code>. <code>await</code> waits for each
+      file system answer without stopping the server. Lesson 4 explains how
+      that works.</p>
+      <span class="code-file">demos.js</span>
+      <pre><code>// GET /demo/about: facts about this project, read from its own files.
+export async function about(req, res) {
+  const text = await readFile(path.join(PROJECT_DIR, 'package.json'), 'utf8');
+  const pkg = JSON.parse(text);
+
+  // Every package npm installed has its own folder in node_modules.
+  // Names that start with a dot, like .package-lock.json, are npm's notes.
+  const entries = await readdir(path.join(PROJECT_DIR, 'node_modules'), { withFileTypes: true });
+  const packagesInstalled = entries.filter(
+    (entry) =&gt; entry.isDirectory() &amp;&amp; !entry.name.startsWith('.'),
+  ).length;
+
+  res.status(200).json({
+    name: pkg.name,
+    version: pkg.version,
+    type: pkg.type,
+    dependencyCount: Object.keys(pkg.dependencies).length,
+    packagesInstalled,
+  });
+}</code></pre>
+    </section>
+
+    <section class="card" aria-labelledby="try-heading">
+      <h2 id="try-heading">Try it live</h2>
+      <p><code>package.json</code> lists exactly one dependency. Before you
+      click, guess how many package folders npm put in
+      <code>node_modules</code>.</p>
+      <div class="demo">
+        <p class="demo-endpoint">GET /demo/about</p>
+        <button type="button" data-demo="/demo/about">Run the demo</button>
+        <pre class="demo-output" aria-live="polite"></pre>
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="happened-heading">
+      <h2 id="happened-heading">What just happened</h2>
+      <p>The server read two things on its own disk, its
+      <code>package.json</code> file and its <code>node_modules</code> folder,
+      and described them as JSON.</p>
+      <ul>
+        <li><strong>HTTP 200 OK</strong> is the status code that
+        <code>about</code> passed to <code>res.status()</code>.</li>
+        <li><code>"name": "learn-node-on-node"</code> and
+        <code>"version": "1.0.0"</code> are copied from
+        <code>package.json</code>. The server reads the file again every time
+        you run the demo.</li>
+        <li><code>"type": "module"</code> is the field that lets
+        <code>server.js</code> and <code>demos.js</code> use
+        <code>import</code>.</li>
+        <li><code>"dependencyCount": 1</code>:
+        <code>Object.keys</code> lists the names inside
+        <code>dependencies</code>, and the only one is
+        <code>express</code>.</li>
+        <li><code>"packagesInstalled": 65</code>: one dependency, but 65
+        package folders. Express lists 28 packages of its own, such as
+        <code>router</code>, which matches paths to handlers, and
+        <code>send</code>, which sends files. Some of those list more. npm
+        installed every one, and <code>package-lock.json</code> lists all
+        65.</li>
+      </ul>
+      <p>That is why <code>node_modules</code> is never saved in Git (it is
+      listed in <code>.gitignore</code>). Anyone with
+      <code>package.json</code> and <code>package-lock.json</code> can rebuild
+      it with <code>npm ci</code>, and Render does exactly that before it
+      starts the site.</p>
+    </section>
+
+    <p><a href="/">Back to the lessons</a></p>
+  </main>
+
+  <footer class="site-footer">
+    <div class="inner">
+      <p>Built by Dan for APC 440.</p>
+      <p>Served by <code>server.js</code>, a Node.js server built with Express.</p>
+    </div>
+  </footer>
+
+  <script src="/js/try-it.js"></script>
+</body>
+</html>
