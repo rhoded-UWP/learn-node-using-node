@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Errors in async code | Learn Node on Node</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="inner">
+      <a class="site-title" href="/">Learn Node on Node</a>
+      <nav class="site-nav" aria-label="Site">
+        <ul>
+          <li><a href="/">Lessons</a></li>
+          <li><a href="/lessons/server-status">Server status</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <span class="pill">Lesson 5</span>
+    <h1>Errors in async code</h1>
+    <p class="lead">How a server catches a failure, picks the right status
+    code, and keeps running for the next visitor.</p>
+
+    <section class="card" aria-labelledby="idea-heading">
+      <h2 id="idea-heading">The idea</h2>
+      <p>Things go wrong on a server. A file is missing, some text is not
+      valid JSON, or a promise is <em>rejected</em> instead of settling with an
+      answer. One server answers every visitor, so one visitor's bad request
+      must not take the site down for everyone else.</p>
+      <p>Inside an <code>async</code> function, a rejected promise that you
+      <code>await</code> <strong>throws</strong>, just like an error in
+      ordinary code. So you can handle it with <code>try</code> and
+      <code>catch</code>: put the risky line in <code>try</code>, and decide in
+      <code>catch</code> what the visitor should get back.</p>
+      <p>When you do not catch an error, Express 5 catches it for you. If an
+      async route handler throws, Express sends the error to the server's
+      <strong>error-handling middleware</strong>, which turns it into a plain
+      500 answer.</p>
+      <p>The demo on this page fails on purpose, in a different way for each
+      <code>type</code> in the query string.</p>
+    </section>
+
+    <section class="card" aria-labelledby="code-heading">
+      <h2 id="code-heading">The code</h2>
+      <p>This is the code behind the demo, copied from this site's own source.
+      First, the <code>fail</code> handler. Each <code>if</code> handles one
+      type. The first three catch their own error. <code>uncaught</code> does
+      not.</p>
+      <span class="code-file">demos.js</span>
+      <pre><code>// The kinds of error /demo/fail can show.
+const FAIL_TYPES = ['reject', 'missing-file', 'bad-json', 'uncaught'];
+
+// A file that does not exist, for the missing-file and uncaught demos.
+const MISSING_FILE = path.join(PROJECT_DIR, 'no-such-file.txt');
+
+// GET /demo/fail?type=: errors on purpose, and how the server handles them.
+export async function fail(req, res) {
+  const { type } = req.query;
+
+  if (type === 'reject') {
+    try {
+      await Promise.reject(new Error('This promise was rejected on purpose.'));
+    } catch (error) {
+      console.error('fail reject:', error.message);
+      return res.status(500).json({ type, caught: true, error: error.message });
+    }
+  }
+
+  if (type === 'missing-file') {
+    try {
+      await readFile(MISSING_FILE, 'utf8');
+    } catch (error) {
+      // error.message names the full path on this computer, so it stays here.
+      console.error('fail missing-file:', error.message);
+      return res.status(404).json({ type, caught: true, code: error.code });
+    }
+  }
+
+  if (type === 'bad-json') {
+    try {
+      JSON.parse('{"name": "Node"');
+    } catch (error) {
+      console.error('fail bad-json:', error.message);
+      return res.status(500).json({ type, caught: true, error: error.message });
+    }
+  }
+
+  if (type === 'uncaught') {
+    // No try/catch. Express 5 sends the rejected promise to the error handler.
+    await readFile(MISSING_FILE, 'utf8');
+  }
+
+  res.status(400).json({ error: 'type must be one of validTypes.', validTypes: FAIL_TYPES });
+}</code></pre>
+      <p>Each <code>catch</code> does two jobs. <code>console.error</code>
+      writes the details in the server's terminal, for you. The
+      <code>return res.status(...).json(...)</code> sends a short answer to the
+      browser, for the visitor, and <code>return</code> stops the function
+      there. A type that matches no <code>if</code> reaches the last line and
+      gets a 400.</p>
+      <p>In <code>server.js</code>, one line connects the path to the
+      handler:</p>
+      <span class="code-file">server.js</span>
+      <pre><code>app.get('/demo/fail', fail);</code></pre>
+      <p>The error-handling middleware is the last thing in
+      <code>server.js</code> before <code>app.listen</code>. Express knows it
+      handles errors because its function has four parameters, with the error
+      first.</p>
+      <span class="code-file">server.js</span>
+      <pre><code>// The error handler has four parameters, so Express sends every error here.
+// The details go to the terminal, never to the browser.
+app.use((error, req, res, next) =&gt; {
+  console.error(error);
+  if (res.headersSent) return next(error);
+  res.status(500).json({ error: 'Something went wrong on the server.' });
+});</code></pre>
+      <p><code>res.headersSent</code> is true if an answer had already started
+      going out before the error happened. Then it is too late to send a
+      different one, so <code>next(error)</code> hands the error to Express's
+      own built-in handler.</p>
+    </section>
+
+    <section class="card" aria-labelledby="try-heading">
+      <h2 id="try-heading">Try it live</h2>
+      <p>Each button asks for a different <code>type</code>. Before you click,
+      guess the status code each one will get. Click them in any order and as
+      many times as you like.</p>
+      <div class="demo">
+        <p class="demo-endpoint">GET /demo/fail?type=reject</p>
+        <button type="button" data-demo="/demo/fail?type=reject">Run: reject</button>
+        <pre class="demo-output" aria-live="polite"></pre>
+      </div>
+      <div class="demo">
+        <p class="demo-endpoint">GET /demo/fail?type=missing-file</p>
+        <button type="button" data-demo="/demo/fail?type=missing-file">Run: missing file</button>
+        <pre class="demo-output" aria-live="polite"></pre>
+      </div>
+      <div class="demo">
+        <p class="demo-endpoint">GET /demo/fail?type=bad-json</p>
+        <button type="button" data-demo="/demo/fail?type=bad-json">Run: bad JSON</button>
+        <pre class="demo-output" aria-live="polite"></pre>
+      </div>
+      <div class="demo">
+        <p class="demo-endpoint">GET /demo/fail?type=uncaught</p>
+        <button type="button" data-demo="/demo/fail?type=uncaught">Run: uncaught</button>
+        <pre class="demo-output" aria-live="polite"></pre>
+      </div>
+      <div class="demo">
+        <p class="demo-endpoint">GET /demo/fail?type=oops</p>
+        <button type="button" data-demo="/demo/fail?type=oops">Run: type=oops</button>
+        <pre class="demo-output" aria-live="polite"></pre>
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="happened-heading">
+      <h2 id="happened-heading">What just happened</h2>
+      <p>Every button got an answer, and none of them stopped the server. Each
+      one came back with a different status code or body:</p>
+      <ul>
+        <li><strong>reject: HTTP 500 Internal Server Error.</strong>
+        <code>await</code> turned the rejected promise into a thrown error, and
+        <code>catch</code> caught it. The body says
+        <code>"caught": true</code> and repeats the error's message,
+        <code>"This promise was rejected on purpose."</code></li>
+        <li><strong>missing file: HTTP 404 Not Found.</strong> Reading
+        <code>no-such-file.txt</code> failed with the code
+        <code>"ENOENT"</code>, which is Node's code for "no such file or
+        directory". The handler chose 404 because the thing asked for is not
+        there. The body has the code but not the message, because the message
+        includes the file's full path on the server's disk. The path appears
+        only in the server's terminal.</li>
+        <li><strong>bad JSON: HTTP 500 Internal Server Error.</strong>
+        <code>JSON.parse</code> threw because the text is missing its closing
+        <code>}</code>. The message says where it gave up: <code>"Expected ','
+        or '}' after property value in JSON at position 15 (line 1 column
+        16)"</code>. <code>JSON.parse</code> is not async at all, and
+        <code>try</code>/<code>catch</code> handles it the same way.</li>
+        <li><strong>uncaught: HTTP 500 Internal Server Error.</strong> This
+        time there is no <code>"caught"</code> and no <code>"type"</code>. The
+        body is only <code>"Something went wrong on the server."</code>, the
+        message from the error-handling middleware. The
+        <code>fail</code> handler never sent anything. Its
+        <code>await</code> threw, and Express 5 passed the error to the
+        middleware. In the terminal, the middleware's
+        <code>console.error</code> printed the full error, path and all. The
+        browser got none of it.</li>
+        <li><strong>type=oops: HTTP 400 Bad Request.</strong> Nothing went
+        wrong on the server. The request asked for something that does not
+        exist, so the answer says what was wrong and lists the four
+        <code>validTypes</code>.</li>
+      </ul>
+      <p>The lesson: catch errors where you know what they mean, so you can
+      send the right status code. 404 means "not here" and 400 means "bad
+      request". For everything you did not expect, the error-handling
+      middleware sends a safe 500, keeps the details in the terminal, and the
+      server goes on answering the next request.</p>
+    </section>
+
+    <p><a href="/">Back to the lessons</a></p>
+  </main>
+
+  <footer class="site-footer">
+    <div class="inner">
+      <p>Built by Dan for APC 440.</p>
+      <p>Served by <code>server.js</code>, a Node.js server built with Express.</p>
+    </div>
+  </footer>
+
+  <script src="/js/try-it.js"></script>
+</body>
+</html>

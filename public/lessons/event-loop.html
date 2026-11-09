@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>The event loop | Learn Node on Node</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="inner">
+      <a class="site-title" href="/">Learn Node on Node</a>
+      <nav class="site-nav" aria-label="Site">
+        <ul>
+          <li><a href="/">Lessons</a></li>
+          <li><a href="/lessons/server-status">Server status</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <span class="pill">Lesson 3</span>
+    <h1>The event loop</h1>
+    <p class="lead">Why Node.js runs your code in an order you might not
+    expect, and how to predict that order.</p>
+
+    <section class="card" aria-labelledby="idea-heading">
+      <h2 id="idea-heading">The idea</h2>
+      <p>Node.js runs your JavaScript on <strong>one thread</strong>. It does
+      one thing at a time. When your code asks for something to happen
+      <em>later</em>, Node.js does not stop and wait. It saves your callback
+      in a queue, finishes the code it is running now, and comes back for the
+      callback afterward. The <strong>event loop</strong> is the part of
+      Node.js that keeps going back to those queues.</p>
+      <p>There is more than one queue, and Node.js empties them in a fixed
+      order. This lesson uses five ways to run code:</p>
+      <ul>
+        <li><strong>Synchronous code</strong>: plain lines that run right
+        now, top to bottom.</li>
+        <li><strong><code>process.nextTick</code></strong>: run this as soon
+        as the current code finishes.</li>
+        <li><strong>A promise's <code>.then</code></strong>: run this once the
+        promise is settled. <code>Promise.resolve()</code> is already
+        settled.</li>
+        <li><strong><code>setImmediate</code></strong>: run this on the event
+        loop's next check for immediate callbacks.</li>
+        <li><strong><code>setTimeout</code> with 0 ms</strong>: run this on
+        the event loop's next check for timers, once 0 ms have passed.</li>
+      </ul>
+      <p>The demo schedules all five in one request and writes down the order
+      they really run in.</p>
+    </section>
+
+    <section class="card" aria-labelledby="code-heading">
+      <h2 id="code-heading">The code</h2>
+      <p>This is the handler that answers the demo, copied from this site's
+      own source. Read the order the lines are written in, then guess the
+      order they run in.</p>
+      <span class="code-file">demos.js</span>
+      <pre><code>// GET /demo/order: five ways to run code, and the order Node.js runs them in.
+// They are scheduled in this order on purpose, so you can compare.
+export function order(req, res) {
+  const labels = [];
+
+  // Each one records its label when it runs. The fifth one sends the answer.
+  function record(label) {
+    labels.push(label);
+    if (labels.length === 5) res.status(200).json({ order: labels });
+  }
+
+  setTimeout(() =&gt; record('setTimeout 0 ms'), 0);
+  setImmediate(() =&gt; record('setImmediate'));
+  Promise.resolve().then(() =&gt; record('promise .then'));
+  process.nextTick(() =&gt; record('process.nextTick'));
+  record('synchronous code');
+}</code></pre>
+      <p>The response cannot go out as soon as the function ends, because four
+      labels are still waiting in queues. So <code>record</code> counts them,
+      and whichever callback runs fifth sends the JSON. In
+      <code>server.js</code>, one line connects the path to the handler:</p>
+      <span class="code-file">server.js</span>
+      <pre><code>app.get('/demo/order', order);</code></pre>
+    </section>
+
+    <section class="card" aria-labelledby="try-heading">
+      <h2 id="try-heading">Try it live</h2>
+      <p><code>setTimeout</code> is scheduled first and the synchronous line
+      is written last. Before you click, write down the order you think the
+      five labels will come back in.</p>
+      <div class="demo">
+        <p class="demo-endpoint">GET /demo/order</p>
+        <button type="button" data-demo="/demo/order">Run the demo</button>
+        <pre class="demo-output" aria-live="polite"></pre>
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="happened-heading">
+      <h2 id="happened-heading">What just happened</h2>
+      <p>The server answered <strong>HTTP 200 OK</strong> with this order,
+      which is almost the reverse of the order the code was written in:</p>
+      <ol>
+        <li><code>"synchronous code"</code> ran first, even though it is the
+        last line. Everything else was only <em>scheduled</em>. Node.js always
+        finishes the code it is running before it looks at any queue.</li>
+        <li><code>"process.nextTick"</code> came next. Node.js runs the
+        <code>nextTick</code> queue the moment the current code finishes.</li>
+        <li><code>"promise .then"</code> was third. Promise callbacks run right
+        after the <code>nextTick</code> queue is empty, still before the event
+        loop moves on.</li>
+        <li><code>"setImmediate"</code> was fourth.</li>
+        <li><code>"setTimeout 0 ms"</code> was last, even though it was
+        scheduled first and asked for no delay at all.</li>
+      </ol>
+      <p>Why did <code>setImmediate</code> beat a 0 ms timer? This handler
+      only runs because a request arrived over the network. The event loop
+      was busy handling that input when it called the handler. After
+      handling input, its next stop is the immediate callbacks. Timers come
+      later, on its next trip around the loop. Run the demo a few more times:
+      the order is the same every time.</p>
+      <p>The lesson for a server: "0 ms" does not mean "now". It means "when
+      the event loop gets to timers". Code that is still running always goes
+      first, and every queued callback waits until it is done.</p>
+    </section>
+
+    <p><a href="/">Back to the lessons</a></p>
+  </main>
+
+  <footer class="site-footer">
+    <div class="inner">
+      <p>Built by Dan for APC 440.</p>
+      <p>Served by <code>server.js</code>, a Node.js server built with Express.</p>
+    </div>
+  </footer>
+
+  <script src="/js/try-it.js"></script>
+</body>
+</html>
