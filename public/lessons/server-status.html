@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Server status | Learn Node on Node</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="inner">
+      <a class="site-title" href="/">Learn Node on Node</a>
+      <nav class="site-nav" aria-label="Site">
+        <ul>
+          <li><a href="/">Lessons</a></li>
+          <li><a href="/lessons/server-status" aria-current="page">Server status</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <span class="pill">Lesson 6</span>
+    <h1>Server status</h1>
+    <p class="lead">A Node.js server is one program that keeps running, so it
+    can remember things between requests and report on itself.</p>
+
+    <section class="card" aria-labelledby="idea-heading">
+      <h2 id="idea-heading">The idea</h2>
+      <p>JavaScript in a browser starts over every time you load a page. This
+      server is different. It starts once and then keeps running, answering
+      request after request. A variable made when it starts stays in memory
+      for as long as the server runs.</p>
+      <p>That lets the server keep a count. A small piece of
+      <strong>middleware</strong>, a function that Express runs on a request
+      before any route sees it, adds 1 to a counter and then calls
+      <code>next()</code> to pass the request along.</p>
+      <p>Node.js can also report on itself through the global
+      <code>process</code> object: which version of Node is running, on which
+      operating system, how long it has been running, and how much memory it
+      is using.</p>
+      <p>The count lives only in memory. There is no database yet, so it goes
+      back to 0 every time the server restarts.</p>
+    </section>
+
+    <section class="card" aria-labelledby="code-heading">
+      <h2 id="code-heading">The code</h2>
+      <p>This is the code behind the demo, copied from this site's own source.
+      First, the counter, the middleware that counts requests, and the
+      <code>status</code> handler:</p>
+      <span class="code-file">demos.js</span>
+      <pre><code>// When the server started. This line runs once, when server.js imports demos.js.
+const startedAt = new Date();
+
+// How many requests the server has answered since it started. It lives in
+// memory only, so it goes back to 0 every time the server restarts.
+let requestsSinceStart = 0;
+
+// Middleware: count requests. server.js runs it before express.static, so it
+// counts every request: pages, styles, scripts, icons, and demos.
+export function countRequests(req, res, next) {
+  requestsSinceStart += 1;
+  next();
+}
+
+// GET /demo/status: facts about this running server, right now.
+export function status(req, res) {
+  const memoryBytes = process.memoryUsage().rss;
+  res.status(200).json({
+    nodeVersion: process.version,
+    platform: process.platform,
+    uptimeSeconds: Math.round(process.uptime()),
+    requestsSinceStart,
+    memoryUsedMB: Math.round(memoryBytes / 1024 / 1024),
+    startedAt: startedAt.toISOString(),
+  });
+}</code></pre>
+      <p><code>process.uptime()</code> is the number of seconds since Node
+      started. <code>process.memoryUsage().rss</code> is the memory the whole
+      Node program is using, in bytes. Dividing by 1024 twice turns it into
+      megabytes.</p>
+      <p>In <code>server.js</code>, the order matters. Express runs
+      <code>app.use</code> middleware in the order it is written, so
+      <code>countRequests</code> comes first, before the 405 check and before
+      <code>express.static</code>. That way it sees every request, even ones
+      that never reach a route.</p>
+      <span class="code-file">server.js</span>
+      <pre><code>// Count every request, before anything else can answer it.
+app.use(countRequests);</code></pre>
+      <p>Further down, one line connects the demo's path to the handler:</p>
+      <span class="code-file">server.js</span>
+      <pre><code>app.get('/demo/status', status);</code></pre>
+    </section>
+
+    <section class="card" aria-labelledby="try-heading">
+      <h2 id="try-heading">Try it live</h2>
+      <p>Click the button and note <code>requestsSinceStart</code>. Click it
+      again: how much did it go up? Then reload this page and click once more.
+      Guess first: will it go up by 1 again?</p>
+      <div class="demo">
+        <p class="demo-endpoint">GET /demo/status</p>
+        <button type="button" data-demo="/demo/status">Run the demo</button>
+        <pre class="demo-output" aria-live="polite"></pre>
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="happened-heading">
+      <h2 id="happened-heading">What just happened</h2>
+      <p>The server answered with HTTP 200 and six facts about itself:</p>
+      <ul>
+        <li><strong>nodeVersion</strong> and <strong>platform</strong>: the
+        version of Node.js running this site, such as <code>"v26.10.0"</code>,
+        and the operating system it runs on, such as <code>"win32"</code> for
+        Windows or <code>"linux"</code> on Render.</li>
+        <li><strong>uptimeSeconds</strong> and <strong>startedAt</strong>: how
+        long the server has been running, and the moment it started.
+        <code>startedAt</code> stays the same on every click, because that line
+        ran only once.</li>
+        <li><strong>memoryUsedMB</strong>: the memory Node is using right now,
+        in megabytes. It can move up or down a little between clicks.</li>
+        <li><strong>requestsSinceStart</strong>: every request the server has
+        answered since it started, counting this one. The counter adds 1
+        before the <code>status</code> handler runs, so the number you see
+        includes the request that asked for it.</li>
+      </ul>
+      <p>Clicking the button twice in a row makes
+      <code>requestsSinceStart</code> go up by exactly 1. The button sends one
+      request, so the server counts one.</p>
+      <p>After you reload the page, it goes up by more than 1. That is because
+      one page load is several requests. The browser first asks for the page,
+      <code>/lessons/server-status</code>. Then it reads the HTML and finds
+      other files it needs, and asks the server for each one:
+      <code>/styles.css</code>, <code>/js/try-it.js</code>, and usually
+      <code>/favicon.svg</code>, the tab icon. Every one of those requests
+      passes through <code>countRequests</code> before
+      <code>express.static</code> sends the file. When this server was tested,
+      loading a page and its three files and then asking for the status moved
+      the count up by 5: 4 for the page load and 1 for the status request.
+      The server's terminal shows the same thing, one line per request.</p>
+      <p>The lesson: the server only counts requests, and a browser makes many
+      of them. A page that links more stylesheets, scripts, or images costs
+      even more requests every time someone loads it.</p>
+    </section>
+
+    <p><a href="/">Back to the lessons</a></p>
+  </main>
+
+  <footer class="site-footer">
+    <div class="inner">
+      <p>Built by Dan for APC 440.</p>
+      <p>Served by <code>server.js</code>, a Node.js server built with Express.</p>
+    </div>
+  </footer>
+
+  <script src="/js/try-it.js"></script>
+</body>
+</html>

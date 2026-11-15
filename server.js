@@ -6,7 +6,9 @@
 
 import express from 'express';
 import path from 'node:path';
-import { echo, about, order, sequential, parallel, fail } from './demos.js';
+import {
+  echo, about, order, sequential, parallel, fail, countRequests, status,
+} from './demos.js';
 
 // Render tells your server which port to use through the PORT environment
 // variable. On your own computer there is no PORT, so we fall back to 3000.
@@ -16,6 +18,9 @@ const PORT = process.env.PORT || 3000;
 const PUBLIC_DIR = path.join(import.meta.dirname, 'public');
 
 const app = express();
+
+// Count every request, before anything else can answer it.
+app.use(countRequests);
 
 // Log every request in the terminal.
 app.use((req, res, next) => {
@@ -42,6 +47,7 @@ app.get('/demo/order', order);
 app.get('/demo/sequential', sequential);
 app.get('/demo/parallel', parallel);
 app.get('/demo/fail', fail);
+app.get('/demo/status', status);
 
 // Unknown /demo/ paths get JSON. Any other unknown path gets the 404 page.
 app.use('/demo', (req, res) => {

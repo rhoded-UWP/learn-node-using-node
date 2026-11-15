@@ -129,3 +129,30 @@ export async function fail(req, res) {
 
   res.status(400).json({ error: 'type must be one of validTypes.', validTypes: FAIL_TYPES });
 }
+
+// When the server started. This line runs once, when server.js imports demos.js.
+const startedAt = new Date();
+
+// How many requests the server has answered since it started. It lives in
+// memory only, so it goes back to 0 every time the server restarts.
+let requestsSinceStart = 0;
+
+// Middleware: count requests. server.js runs it before express.static, so it
+// counts every request: pages, styles, scripts, icons, and demos.
+export function countRequests(req, res, next) {
+  requestsSinceStart += 1;
+  next();
+}
+
+// GET /demo/status: facts about this running server, right now.
+export function status(req, res) {
+  const memoryBytes = process.memoryUsage().rss;
+  res.status(200).json({
+    nodeVersion: process.version,
+    platform: process.platform,
+    uptimeSeconds: Math.round(process.uptime()),
+    requestsSinceStart,
+    memoryUsedMB: Math.round(memoryBytes / 1024 / 1024),
+    startedAt: startedAt.toISOString(),
+  });
+}
