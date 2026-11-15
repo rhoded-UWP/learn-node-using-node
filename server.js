@@ -2,7 +2,7 @@
 //
 // This file creates the Express app, serves the pages in public/, adds each
 // live demo, and ends with the 404 handlers and the error handler.
-// The demo handlers live in demos.js.
+// The demo handlers live in demos.js, and the feedback API is in feedback.js.
 
 import express from 'express';
 import path from 'node:path';
@@ -10,6 +10,9 @@ import {
   echo, about, order, sequential, parallel, fail, countRequests, status,
 } from './demos.js';
 import { setupDatabase } from './db.js';
+import {
+  listFeedback, getFeedback, createFeedback, updateFeedback, deleteFeedback,
+} from './feedback.js';
 
 // Render tells your server which port to use through the PORT environment
 // variable. On your own computer there is no PORT, so we fall back to 3000.
@@ -29,9 +32,10 @@ app.use((req, res, next) => {
   next();
 });
 
-// This site only answers GET. Every other method gets a 405.
+// Pages and demos only answer GET. Every other method gets a 405.
+// /api/ routes are checked later, each with its own list of methods.
 app.use((req, res, next) => {
-  if (req.method === 'GET') return next();
+  if (req.method === 'GET' || req.path.startsWith('/api/')) return next();
   res.set('Allow', 'GET');
   res.status(405).json({ error: 'Method not allowed. Use GET.' });
 });
@@ -50,8 +54,31 @@ app.get('/demo/parallel', parallel);
 app.get('/demo/fail', fail);
 app.get('/demo/status', status);
 
-// Unknown /demo/ paths get JSON. Any other unknown path gets the 404 page.
-app.use('/demo', (req, res) => {
+// Lesson 7: the feedback API. Each handler is in feedback.js.
+// express.json() reads a JSON request body into req.body.
+app.use('/api', express.json());
+
+// Answers any method a route does not list, with the ones it does.
+function onlyAllow(methods) {
+  return (req, res) => {
+    res.set('Allow', methods);
+    res.status(405).json({ error: `Method not allowed. Use ${methods}.` });
+  };
+}
+
+app.route('/api/feedback')
+  .get(listFeedback)
+  .post(createFeedback)
+  .all(onlyAllow('GET, POST'));
+
+app.route('/api/feedback/:id')
+  .get(getFeedback)
+  .put(updateFeedback)
+  .delete(deleteFeedback)
+  .all(onlyAllow('GET, PUT, DELETE'));
+
+// Unknown /demo/ and /api/ paths get JSON. Any other unknown path gets the 404 page.
+app.use(['/demo', '/api'], (req, res) => {
   res.status(404).json({ error: 'Not found' });
 });
 app.use((req, res) => {
@@ -61,12 +88,17 @@ app.use((req, res) => {
 // The error handler has four parameters, so Express sends every error here.
 // The details go to the terminal, never to the browser.
 app.use((error, req, res, next) => {
+  // express.json() could not read the body. That is the visitor's mistake: 400.
+  if (error.type === 'entity.parse.failed') {
+    console.error('Bad JSON body:', error.message);
+    return res.status(400).json({ error: 'The body is not valid JSON.' });
+  }
   console.error(error);
   if (res.headersSent) return next(error);
   res.status(500).json({ error: 'Something went wrong on the server.' });
 });
 
-// Create the database table before the server answers anyone. If the
+// Create the database tables before the server answers anyone. If the
 // database is missing or down, the server still starts without it.
 if (await setupDatabase()) {
   console.log('Database ready');

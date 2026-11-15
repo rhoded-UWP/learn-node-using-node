@@ -34,7 +34,8 @@ export async function query(text, values = []) {
 }
 
 // Runs once, before the server starts listening. Creates the site_stats
-// table if it is missing, and its one row, named 'requests'.
+// table if it is missing, and its one row, named 'requests'. Then creates
+// the feedback table if it is missing.
 // Returns true if the database is ready, false if it is not.
 export async function setupDatabase() {
   if (!pool) {
@@ -53,6 +54,16 @@ export async function setupDatabase() {
       'INSERT INTO site_stats (name, value) VALUES ($1, 0) ON CONFLICT (name) DO NOTHING',
       ['requests'],
     );
+    // Lesson 7: visitors' feedback. CHECK makes the database itself refuse
+    // a lesson outside 1 to 7 or a message outside 1 to 500 characters.
+    await query(`
+      CREATE TABLE IF NOT EXISTS feedback (
+        id         SERIAL PRIMARY KEY,
+        lesson     INTEGER NOT NULL CHECK (lesson BETWEEN 1 AND 7),
+        message    TEXT NOT NULL CHECK (char_length(message) BETWEEN 1 AND 500),
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      )
+    `);
     return true;
   } catch (error) {
     // error.message, not the whole error, so the connection string never prints.

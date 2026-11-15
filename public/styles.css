@@ -265,3 +265,51 @@ button:disabled {
 @media (max-width: 30rem) {
   .card, .demo { padding: 1rem; }
 }
+
+/* ---------- Lesson 7: feedback form and list ---------- */
+
+.feedback-form label {
+  display: block;
+  font-weight: 700;
+  margin-top: 0.75rem;
+}
+
+.feedback-form input,
+.feedback-form textarea {
+  font: inherit;
+  width: 100%;
+  margin-top: 0.25rem;
+  padding: 0.5rem 0.75rem;
+  color: var(--ink);
+  background: var(--surface);
+  border: 2px solid var(--ink-soft);
+  border-radius: 8px;
+}
+
+.feedback-form input { max-width: 8rem; }
+
+.feedback-form button { margin-top: 1rem; }
+
+.feedback-list {
+  list-style: none;
+  padding: 0;
+}
+
+.feedback-list li {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.75rem 1rem;
+  margin: 0.75rem 0;
+}
+
+.feedback-list p {
+  margin: 0 0 0.5rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.feedback-list .feedback-meta {
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+}

@@ -38,13 +38,14 @@ keep it short, and explain your choices in plain words.
 - "/" serves public/index.html.
 - A path with no file extension is served as .html:
   /lessons/event-loop serves public/lessons/event-loop.html.
-- Lesson files, in lesson order (the home page already links to all six):
+- Lesson files, in lesson order (the home page links to every one):
   1. public/lessons/http-server.html
   2. public/lessons/modules-and-npm.html
   3. public/lessons/event-loop.html
   4. public/lessons/async-await.html
   5. public/lessons/errors.html
   6. public/lessons/server-status.html
+  7. public/lessons/rest-api.html
 - Build every lesson by copying public/lessons/_lesson-template.html.
   Keep its four sections in order: The idea, The code, Try it live,
   What just happened. Keep the header, nav, footer, and the try-it.js script.
@@ -82,6 +83,22 @@ Use these exact paths. Later steps depend on them.
   whether the database is connected, memory used in MB, and when the server
   started.
 
+## API endpoints (JSON, all under /api/)
+One resource, lesson feedback, in a table named feedback: id (SERIAL primary
+key), lesson (whole number 1 to 7), message (1 to 500 characters), and
+created_at (TIMESTAMPTZ, default now()). Use these exact routes.
+- GET /api/feedback: every row, newest first, 200. Optional ?lesson=N filter.
+- GET /api/feedback/:id: one row, 200, or 404 if no row has that id.
+- POST /api/feedback: JSON body { lesson, message }. Returns the new row, 201.
+- PUT /api/feedback/:id: JSON body { lesson, message }. Returns the updated
+  row, 200, or 404.
+- DELETE /api/feedback/:id: 204 with no body, or 404.
+- Bad input is a 400 with JSON that says what was wrong: an id that is not a
+  whole number, a lesson outside 1 to 7, a missing, empty, or too-long
+  message, or a body that is not JSON.
+- Browser code shows anything a visitor typed with textContent, never
+  innerHTML.
+
 ## Errors and status codes
 - One bad request must never crash the server. One error-handling
   middleware, last in server.js, turns any error into a 500 JSON response.
@@ -89,7 +106,8 @@ Use these exact paths. Later steps depend on them.
 - Unknown page paths: 404 with public/404.html. Unknown /demo/ paths: 404
   with JSON { "error": "Not found" }.
 - Bad input in a query string: 400 with JSON that says what was wrong.
-- Only GET is supported. Other methods get 405.
+- Pages and /demo/ routes are GET only. /api/ routes use only the methods
+  in the API endpoints section. Any other method gets 405.
 - Always set Content-Type. JSON uses "application/json; charset=utf-8".
 - Log errors on the server with console.error. Never send stack traces or
   file system paths to the browser.
