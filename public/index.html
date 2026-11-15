@@ -34,9 +34,9 @@
       asked for, finds the matching file in its <code>public</code> folder, and
       sends it back. When you click <strong>Run the demo</strong> on a lesson,
       the server runs real code and answers with JSON.</p>
-      <p>The site uses one npm package, Express, to receive requests and
-      send answers. Everything else comes from modules that ship with Node.js
-      itself.</p>
+      <p>The site uses two npm packages: Express, to receive requests and
+      send answers, and pg, to talk to the database. Everything else comes
+      from modules that ship with Node.js itself.</p>
     </section>
 
     <section aria-labelledby="lessons-heading">
@@ -48,7 +48,7 @@
         </li>
         <li>
           <a href="/lessons/modules-and-npm">2. Modules and npm</a>
-          <p>package.json, <code>import</code>, scripts, and why Express is this site's only dependency.</p>
+          <p>package.json, <code>import</code>, scripts, and why Express and pg are this site's only dependencies.</p>
         </li>
         <li>
           <a href="/lessons/event-loop">3. The event loop</a>

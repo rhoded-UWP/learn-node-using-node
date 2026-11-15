@@ -51,9 +51,9 @@
       <p><code>package.json</code> describes the project to Node.js and npm.
       Its <code>dependencies</code> list the packages your code imports by
       name. npm installs those, the packages they need, and the packages
-      <em>those</em> need. Express is this site's only dependency because
-      everything else it does, such as reading files and joining folder paths,
-      comes from Node's core modules.</p>
+      <em>those</em> need. Express and pg are this site's only dependencies
+      because everything else it does, such as reading files and joining folder
+      paths, comes from Node's core modules.</p>
     </section>
 
     <section class="card" aria-labelledby="code-heading">
@@ -78,7 +78,8 @@
   },
   "license": "UNLICENSED",
   "dependencies": {
-    "express": "^5.3.0"
+    "express": "^5.3.0",
+    "pg": "^8.23.1"
   }
 }</code></pre>
       <p>Four of its fields matter for this lesson:</p>
@@ -155,7 +156,7 @@ export async function about(req, res) {
 
     <section class="card" aria-labelledby="try-heading">
       <h2 id="try-heading">Try it live</h2>
-      <p><code>package.json</code> lists exactly one dependency. Before you
+      <p><code>package.json</code> lists exactly two dependencies. Before you
       click, guess how many package folders npm put in
       <code>node_modules</code>.</p>
       <div class="demo">
@@ -180,16 +181,16 @@ export async function about(req, res) {
         <li><code>"type": "module"</code> is the field that lets
         <code>server.js</code> and <code>demos.js</code> use
         <code>import</code>.</li>
-        <li><code>"dependencyCount": 1</code>:
+        <li><code>"dependencyCount": 2</code>:
         <code>Object.keys</code> lists the names inside
-        <code>dependencies</code>, and the only one is
-        <code>express</code>.</li>
-        <li><code>"packagesInstalled": 65</code>: one dependency, but 65
+        <code>dependencies</code>, and they are <code>express</code> and
+        <code>pg</code>.</li>
+        <li><code>"packagesInstalled": 79</code>: two dependencies, but 79
         package folders. Express lists 28 packages of its own, such as
         <code>router</code>, which matches paths to handlers, and
-        <code>send</code>, which sends files. Some of those list more. npm
-        installed every one, and <code>package-lock.json</code> lists all
-        65.</li>
+        <code>send</code>, which sends files. pg lists 5 of its own, such as
+        <code>pg-pool</code>. Some of those list more. npm installed every
+        one, and <code>package-lock.json</code> lists all 79.</li>
       </ul>
       <p>That is why <code>node_modules</code> is never saved in Git (it is
       listed in <code>.gitignore</code>). Anyone with

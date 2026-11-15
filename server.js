@@ -9,6 +9,7 @@ import path from 'node:path';
 import {
   echo, about, order, sequential, parallel, fail, countRequests, status,
 } from './demos.js';
+import { setupDatabase } from './db.js';
 
 // Render tells your server which port to use through the PORT environment
 // variable. On your own computer there is no PORT, so we fall back to 3000.
@@ -64,6 +65,12 @@ app.use((error, req, res, next) => {
   if (res.headersSent) return next(error);
   res.status(500).json({ error: 'Something went wrong on the server.' });
 });
+
+// Create the database table before the server answers anyone. If the
+// database is missing or down, the server still starts without it.
+if (await setupDatabase()) {
+  console.log('Database ready');
+}
 
 // app.listen creates the Node.js HTTP server for us and starts it.
 app.listen(PORT, (error) => {

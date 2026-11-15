@@ -6,6 +6,7 @@
 import { readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
 import { setTimeout as wait } from 'node:timers/promises';
+import { query } from './db.js';
 
 // The project folder. demos.js sits next to package.json and node_modules.
 const PROJECT_DIR = import.meta.dirname;
@@ -139,19 +140,37 @@ let requestsSinceStart = 0;
 
 // Middleware: count requests. server.js runs it before express.static, so it
 // counts every request: pages, styles, scripts, icons, and demos.
-export function countRequests(req, res, next) {
+// It counts twice: once in memory, and once in the database's 'requests' row.
+export async function countRequests(req, res, next) {
   requestsSinceStart += 1;
+
+  // res.locals keeps values for this one request, so status can read them.
+  res.locals.requestsAllTime = null;
+  try {
+    const result = await query(
+      'UPDATE site_stats SET value = value + 1 WHERE name = $1 RETURNING value',
+      ['requests'],
+    );
+    // pg returns a BIGINT as text, so turn it into a number.
+    res.locals.requestsAllTime = Number(result.rows[0].value);
+  } catch (error) {
+    // No database: log it, and still serve the page.
+    console.error('Could not count the request in the database:', error.message);
+  }
   next();
 }
 
 // GET /demo/status: facts about this running server, right now.
 export function status(req, res) {
   const memoryBytes = process.memoryUsage().rss;
+  const { requestsAllTime } = res.locals;
   res.status(200).json({
     nodeVersion: process.version,
     platform: process.platform,
     uptimeSeconds: Math.round(process.uptime()),
     requestsSinceStart,
+    requestsAllTime,
+    database: requestsAllTime === null ? 'not connected' : 'connected',
     memoryUsedMB: Math.round(memoryBytes / 1024 / 1024),
     startedAt: startedAt.toISOString(),
   });

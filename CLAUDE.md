@@ -17,10 +17,10 @@ keep it short, and explain your choices in plain words.
 ## Stack
 - Node.js 24 or newer. ES modules only: `import`, never `require()`.
   package.json already has "type": "module".
-- Express 5 is this site's only npm package. Core modules still use the
-  `node:` prefix (node:path, node:fs/promises, node:os, node:timers/promises).
-  No other packages. If the student asks to install one, remind them of
-  this rule first.
+- Express 5 and pg (node-postgres) are this site's only npm packages. Core
+  modules still use the `node:` prefix (node:path, node:fs/promises, node:os,
+  node:timers/promises). No other packages, not even dotenv. If the student
+  asks to install one, remind them of this rule first.
 - Use `import.meta.dirname` for the project folder. ES modules have no
   __dirname.
 - server.js creates the Express app, serves public/ with express.static,
@@ -78,7 +78,9 @@ Use these exact paths. Later steps depend on them.
   type is a 400 that lists the valid types. The server keeps running after
   every one of these.
 - /demo/status: Node version, platform, uptime in seconds, requests served
-  since the server started, memory used in MB, and when the server started.
+  since the server started, requests served all time (from the database),
+  whether the database is connected, memory used in MB, and when the server
+  started.
 
 ## Errors and status codes
 - One bad request must never crash the server. One error-handling
@@ -97,6 +99,25 @@ Use these exact paths. Later steps depend on them.
   leaves it. Never build page file paths by hand.
 - express.static sets Content-Type from the file extension.
 
+## Database
+- Render Postgres, reached with pg. db.js creates the only pg.Pool and
+  exports query(text, values) and setupDatabase(). No other file makes a pool.
+- The connection string comes only from process.env.DATABASE_URL. Never write
+  it in code, never log it, and never send it to the browser.
+- On the student's computer, npm run dev loads .env with Node's
+  --env-file-if-exists flag. .env is in .gitignore and is never committed.
+  On Render, DATABASE_URL is set in the service's Environment settings.
+- SSL: on Render (process.env.RENDER is set), the Internal URL needs no SSL.
+  Anywhere else, use ssl: { rejectUnauthorized: false }, because Render
+  requires SSL on the External URL.
+- Parameterized queries only: values go in the values array as $1, $2, and
+  so on. Never build SQL by joining strings or with template literals.
+- setupDatabase() runs once, before app.listen, and creates any missing table
+  with CREATE TABLE IF NOT EXISTS.
+- If DATABASE_URL is missing or the database is down, the server still starts
+  and lessons 1 to 5 keep working. Set connectionTimeoutMillis to 5000 so no
+  page hangs waiting for the database.
+
 ## Accessibility
 - One h1 per page and logical heading order
 - Every button has text; everything works with the keyboard alone
@@ -108,3 +129,4 @@ Use these exact paths. Later steps depend on them.
 - Start the server, request every route you added or changed (with curl or
   fetch), and check the status code and body. Then stop the server.
 - List which files changed and why.
+- Explain any new Node.js idea you used in one or two plain sentences.

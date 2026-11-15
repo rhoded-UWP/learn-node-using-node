@@ -24,7 +24,8 @@
     <span class="pill">Lesson 6</span>
     <h1>Server status</h1>
     <p class="lead">A Node.js server is one program that keeps running, so it
-    can remember things between requests and report on itself.</p>
+    can remember things between requests. With a database, it can remember
+    them even after it restarts.</p>
 
     <section class="card" aria-labelledby="idea-heading">
       <h2 id="idea-heading">The idea</h2>
@@ -36,19 +37,21 @@
       <strong>middleware</strong>, a function that Express runs on a request
       before any route sees it, adds 1 to a counter and then calls
       <code>next()</code> to pass the request along.</p>
+      <p>A count in memory is lost when the server stops. So the same
+      middleware also adds 1 to a row in a Postgres <strong>database</strong>,
+      which keeps its data after the server restarts. The page shows both
+      counts side by side, so you can compare them.</p>
       <p>Node.js can also report on itself through the global
       <code>process</code> object: which version of Node is running, on which
       operating system, how long it has been running, and how much memory it
       is using.</p>
-      <p>The count lives only in memory. There is no database yet, so it goes
-      back to 0 every time the server restarts.</p>
     </section>
 
     <section class="card" aria-labelledby="code-heading">
       <h2 id="code-heading">The code</h2>
       <p>This is the code behind the demo, copied from this site's own source.
-      First, the counter, the middleware that counts requests, and the
-      <code>status</code> handler:</p>
+      First, the counter in memory, the middleware that counts requests, and
+      the <code>status</code> handler:</p>
       <span class="code-file">demos.js</span>
       <pre><code>// When the server started. This line runs once, when server.js imports demos.js.
 const startedAt = new Date();
@@ -59,27 +62,57 @@ let requestsSinceStart = 0;
 
 // Middleware: count requests. server.js runs it before express.static, so it
 // counts every request: pages, styles, scripts, icons, and demos.
-export function countRequests(req, res, next) {
+// It counts twice: once in memory, and once in the database's 'requests' row.
+export async function countRequests(req, res, next) {
   requestsSinceStart += 1;
+
+  // res.locals keeps values for this one request, so status can read them.
+  res.locals.requestsAllTime = null;
+  try {
+    const result = await query(
+      'UPDATE site_stats SET value = value + 1 WHERE name = $1 RETURNING value',
+      ['requests'],
+    );
+    // pg returns a BIGINT as text, so turn it into a number.
+    res.locals.requestsAllTime = Number(result.rows[0].value);
+  } catch (error) {
+    // No database: log it, and still serve the page.
+    console.error('Could not count the request in the database:', error.message);
+  }
   next();
 }
 
 // GET /demo/status: facts about this running server, right now.
 export function status(req, res) {
   const memoryBytes = process.memoryUsage().rss;
+  const { requestsAllTime } = res.locals;
   res.status(200).json({
     nodeVersion: process.version,
     platform: process.platform,
     uptimeSeconds: Math.round(process.uptime()),
     requestsSinceStart,
+    requestsAllTime,
+    database: requestsAllTime === null ? 'not connected' : 'connected',
     memoryUsedMB: Math.round(memoryBytes / 1024 / 1024),
     startedAt: startedAt.toISOString(),
   });
 }</code></pre>
-      <p><code>process.uptime()</code> is the number of seconds since Node
-      started. <code>process.memoryUsage().rss</code> is the memory the whole
-      Node program is using, in bytes. Dividing by 1024 twice turns it into
-      megabytes.</p>
+      <p><code>countRequests</code> is now <code>async</code>. It uses
+      <code>await</code> to wait for the database to add 1 and send back the
+      new total (that is what <code>RETURNING value</code> asks for). Only then
+      does it call <code>next()</code>. The <code>$1</code> in the SQL is
+      filled in from the array after it, <code>['requests']</code>, so a value
+      is never pasted into the SQL text.</p>
+      <p>If the database fails, <code>catch</code> writes the reason in the
+      terminal and <code>next()</code> still runs, so the page is still
+      served. <code>res.locals</code> is an object Express gives each request.
+      The middleware leaves the all-time count there, and <code>status</code>
+      reads it from there. When it is still <code>null</code>,
+      <code>status</code> reports the database as not connected.</p>
+      <p><code>query</code> comes from <code>db.js</code>, the one file that
+      talks to the database:</p>
+      <span class="code-file">demos.js</span>
+      <pre><code>import { query } from './db.js';</code></pre>
       <p>In <code>server.js</code>, the order matters. Express runs
       <code>app.use</code> middleware in the order it is written, so
       <code>countRequests</code> comes first, before the 405 check and before
@@ -95,9 +128,10 @@ app.use(countRequests);</code></pre>
 
     <section class="card" aria-labelledby="try-heading">
       <h2 id="try-heading">Try it live</h2>
-      <p>Click the button and note <code>requestsSinceStart</code>. Click it
-      again: how much did it go up? Then reload this page and click once more.
-      Guess first: will it go up by 1 again?</p>
+      <p>Click the button and compare <code>requestsSinceStart</code> with
+      <code>requestsAllTime</code>. Click it again: how much did each one go
+      up? Then reload this page and click once more. Guess first: will they
+      go up by 1 again?</p>
       <div class="demo">
         <p class="demo-endpoint">GET /demo/status</p>
         <button type="button" data-demo="/demo/status">Run the demo</button>
@@ -107,7 +141,7 @@ app.use(countRequests);</code></pre>
 
     <section class="card" aria-labelledby="happened-heading">
       <h2 id="happened-heading">What just happened</h2>
-      <p>The server answered with HTTP 200 and six facts about itself:</p>
+      <p>The server answered with HTTP 200 and eight facts about itself:</p>
       <ul>
         <li><strong>nodeVersion</strong> and <strong>platform</strong>: the
         version of Node.js running this site, such as <code>"v26.10.0"</code>,
@@ -119,28 +153,45 @@ app.use(countRequests);</code></pre>
         ran only once.</li>
         <li><strong>memoryUsedMB</strong>: the memory Node is using right now,
         in megabytes. It can move up or down a little between clicks.</li>
-        <li><strong>requestsSinceStart</strong>: every request the server has
-        answered since it started, counting this one. The counter adds 1
-        before the <code>status</code> handler runs, so the number you see
-        includes the request that asked for it.</li>
+        <li><strong>requestsSinceStart</strong>: requests counted in memory
+        since this server started, including this one.</li>
+        <li><strong>requestsAllTime</strong>: requests counted in the
+        database, across every time the server has run, including this
+        one.</li>
+        <li><strong>database</strong>: <code>"connected"</code> if the
+        database counted this request, <code>"not connected"</code> if it
+        could not.</li>
       </ul>
-      <p>Clicking the button twice in a row makes
-      <code>requestsSinceStart</code> go up by exactly 1. The button sends one
-      request, so the server counts one.</p>
-      <p>After you reload the page, it goes up by more than 1. That is because
-      one page load is several requests. The browser first asks for the page,
-      <code>/lessons/server-status</code>. Then it reads the HTML and finds
-      other files it needs, and asks the server for each one:
-      <code>/styles.css</code>, <code>/js/try-it.js</code>, and usually
-      <code>/favicon.svg</code>, the tab icon. Every one of those requests
-      passes through <code>countRequests</code> before
-      <code>express.static</code> sends the file. When this server was tested,
-      loading a page and its three files and then asking for the status moved
-      the count up by 5: 4 for the page load and 1 for the status request.
-      The server's terminal shows the same thing, one line per request.</p>
-      <p>The lesson: the server only counts requests, and a browser makes many
-      of them. A page that links more stylesheets, scripts, or images costs
-      even more requests every time someone loads it.</p>
+      <h3>Comparing the two counters</h3>
+      <p>Click the button twice in a row, and <strong>both</strong> counters
+      go up by exactly 1. The button sends one request, and
+      <code>countRequests</code> adds 1 to each counter.</p>
+      <p>Reload the page, and both go up by more than 1. One page load is
+      several requests. The browser first asks for the page,
+      <code>/lessons/server-status</code>. Then it reads the HTML and asks the
+      server for each file it needs: <code>/styles.css</code>,
+      <code>/js/try-it.js</code>, and usually <code>/favicon.svg</code>, the
+      tab icon. Every one of those requests passes through
+      <code>countRequests</code> before <code>express.static</code> sends the
+      file. When this server was tested, loading a page with its three files
+      and then asking for the status moved both counters up by 5: 4 for the
+      page load and 1 for the status request. The server's terminal shows one
+      line per request.</p>
+      <p>The two counters differ after a <strong>restart</strong>. When this
+      server was tested, the counts were equal before it stopped. Right after
+      it started again, the status showed <code>"requestsSinceStart": 2</code>
+      but <code>"requestsAllTime": 11</code>. The variable in memory started
+      over at 0. The row in the database kept its value and went on counting
+      from there. On a site that has been running for a while,
+      <code>requestsAllTime</code> is usually much bigger.</p>
+      <p>When the database cannot be reached, the server still answers. When
+      this server was tested with no database, the page still loaded with HTTP
+      200, and the status showed <code>"requestsAllTime": null</code> and
+      <code>"database": "not connected"</code>. The memory counter kept
+      working, and the terminal printed why the database count failed.</p>
+      <p>The lesson: memory is fast but forgets when the program stops. A
+      database remembers. A real site keeps anything that must last, like
+      users, orders, and counts, in a database.</p>
     </section>
 
     <p><a href="/">Back to the lessons</a></p>
